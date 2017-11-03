@@ -1,5 +1,6 @@
 package game;
 
+import game.Engine.GameState;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -19,19 +20,14 @@ import javax.swing.JPanel;
 public class Display extends JPanel {
     int nW;
     int nH;
-    ArrayList<int []> elements;
-    Point position;
-    int nEnemyTypes;
+    GameState state;
     BufferedImage [] monsterSprites;
     BufferedImage heroSprite;
     BufferedImage background;
-    public Display(int nW, int nH, ArrayList<int []> elements, Point position, int nEnemyTypes) {
+    public Display(int nW, int nH, GameState state) {
         this.nW = nW;
         this.nH = nH;
-        this.elements = elements;
-        this.position = position;
-        this.nEnemyTypes = nEnemyTypes;
-        setOpaque(true);
+        this.state = state;
     }
 
     BufferedImage loadSprite(URL file, int w, int h) {
@@ -64,8 +60,8 @@ public class Display extends JPanel {
         final int h = getHeight();
         final int cellW = (int) ((float) w / nW);
         final int cellH = (int) ((float) h / nH);
-        monsterSprites = new BufferedImage[nEnemyTypes];
-        for (int i = 0; i < nEnemyTypes; ++i)
+        monsterSprites = new BufferedImage[state.nEnemyTypes];
+        for (int i = 0; i < state.nEnemyTypes; ++i)
             monsterSprites[i] = loadSprite(this.getClass().getResource("/game/sprites/monster" + (i + 1) +  ".png"), cellW, cellH);
         heroSprite = loadSprite(this.getClass().getResource("/game/sprites/hero.png"), cellW, cellH);
         background = loadSprite(this.getClass().getResource("/game/sprites/space.png"), w, h, false);
@@ -86,9 +82,9 @@ public class Display extends JPanel {
             g.drawImage(background, 0, 0, this);
         final int cellW = (int) ((float) w / nW);
         final int cellH = (int) ((float) h / nH);
-        for (int _j = 0, len = elements.size(); _j < len; ++_j) {
+        for (int _j = 0, len = state.elements.size(); _j < len; ++_j) {
             final int x = w - (int) ((_j + 1) * (float) w / nW);
-            final int [] column = elements.get(len - _j - 1);
+            final int [] column = state.elements.get(len - _j - 1);
             for (int i = 0; i < nH; ++i) {
                 final int enemyId = column[i];
                 if (enemyId != 0) {
@@ -99,8 +95,8 @@ public class Display extends JPanel {
             }
         }
         {
-            final int x = (int) (position.x * (float) w / nW);
-            final int y = (int) (position.y * (float) h / nH);
+            final int x = (int) (state.position.x * (float) w / nW);
+            final int y = (int) (state.position.y * (float) h / nH);
             g.drawImage(heroSprite, x, y, this);
         }
         if (GAME_OVER) {
@@ -109,6 +105,26 @@ public class Display extends JPanel {
             final FontMetrics metrics = g.getFontMetrics(font);
             final int x = (w - metrics.stringWidth(text)) / 2;
             final int y = ((h - metrics.getHeight()) / 2) + metrics.getAscent();
+            g.setColor(Color.RED);
+            g.setFont(font);
+            g.drawString(text, x, y);
+        }
+        {
+            final String text = "SCORE: " + state.score;
+            final Font font = new Font("sansserif", Font.BOLD, (int) ((float) h / 25));
+            final FontMetrics metrics = g.getFontMetrics(font);
+            final int x = 10;
+            final int y = 10 + metrics.getAscent();
+            g.setColor(Color.RED);
+            g.setFont(font);
+            g.drawString(text, x, y);
+        }
+        {
+            final String text = "LEVEL: " + state.difficulty;
+            final Font font = new Font("sansserif", Font.BOLD, (int) ((float) h / 25));
+            final FontMetrics metrics = g.getFontMetrics(font);
+            final int x = w - metrics.stringWidth(text) - 10;
+            final int y = 10 + metrics.getAscent();
             g.setColor(Color.RED);
             g.setFont(font);
             g.drawString(text, x, y);

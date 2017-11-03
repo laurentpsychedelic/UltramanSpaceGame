@@ -14,15 +14,20 @@ public class Engine {
     int dT;
     Timer timer;
     Display display;
-    ArrayList<int []> elements = new ArrayList<>();
-    Point position;
-    final int nEnemyTypes = 3;
+    public class GameState {
+        ArrayList<int []> elements = new ArrayList<>();
+        int nEnemyTypes = 3;
+        Point position;
+        int score = 0;
+        int difficulty = 10;
+    }
+    GameState state = new GameState();
     public Engine(int nW, int nH, int dT) {
         this.nW = nW;
         this.nH = nH;
-        this.position = new Point(nW / 3, nH / 2);
+        state.position = new Point(nW / 3, nH / 2);
         this.dT = dT;
-        this.display = new Display(nW, nH, elements, position, nEnemyTypes);
+        this.display = new Display(nW, nH, state);
         timer = new Timer(dT, tickListener);
     }
     public Display getDisplay() { return display; }
@@ -37,28 +42,38 @@ public class Engine {
         timer.start();
     }
     Random random = new Random();
-    final int difficulty = 10;
     int [] newColumn() {
         final int [] column = new int[nH];
         for (int i = 0; i < nH; ++i) {
-            if (random.nextInt(100) < difficulty)
-                column[i] = random.nextInt(nEnemyTypes) + 1;
+            if (random.nextInt(100) < state.difficulty)
+                column[i] = random.nextInt(state.nEnemyTypes) + 1;
         }
         return column;
     }
+    int countMonsters(int [] column) {
+        int n = 0;
+        for (int i = 0, len = column.length; i < len; ++i) {
+            if (column[i] > 0)
+                n++;
+        }
+        return n;
+    }
     void incrementAction() {
-        elements.add(newColumn());
-        if (elements.size() > nW)
-            elements.remove(0);
+        state.elements.add(newColumn());
+        if (state.elements.size() > nW) {
+            final int [] column = state.elements.get(0);
+            state.score += countMonsters(column);
+            state.elements.remove(0);
+        }
         display.updateContents();
         detectCollision();
     }
     void detectCollision() {
-        final int _x = position.x - (nW - elements.size());
-        if (_x < 0 || _x >= elements.size())
+        final int _x = state.position.x - (nW - state.elements.size());
+        if (_x < 0 || _x >= state.elements.size())
             return;
-        final int [] column = elements.get(_x);
-        if (column[position.y] > 0)
+        final int [] column = state.elements.get(_x);
+        if (column[state.position.y] > 0)
             gameOver();
     }
     boolean GAME_OVER = false;
@@ -86,8 +101,8 @@ public class Engine {
                 System.exit(0);
             return;
         }
-        int x = position.x;
-        int y = position.y;
+        int x = state.position.x;
+        int y = state.position.y;
         switch ( keyCode ) { 
         case KeyEvent.VK_UP:
             y--;
@@ -110,8 +125,8 @@ public class Engine {
             y = 0;
         if (y >= nH)
             y = nH - 1;
-        position.x = x;
-        position.y = y;
+        state.position.x = x;
+        state.position.y = y;
         display.updateContents();
         detectCollision();
     }
