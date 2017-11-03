@@ -19,8 +19,9 @@ public class Engine {
         int nEnemyTypes = 3;
         Point position;
         int score = 0;
-        int difficulty = 10;
+        int level = 1;
     }
+    int difficulty = 100;
     GameState state = new GameState();
     public Engine(int nW, int nH, int dT) {
         this.nW = nW;
@@ -41,11 +42,16 @@ public class Engine {
         display.init();
         timer.start();
     }
+    public void restart() {
+        timer.stop();
+        timer = new Timer(dT, tickListener);
+        timer.start();
+    }
     Random random = new Random();
     int [] newColumn() {
         final int [] column = new int[nH];
         for (int i = 0; i < nH; ++i) {
-            if (random.nextInt(100) < state.difficulty)
+            if (random.nextInt(1000) > (1000 - difficulty))
                 column[i] = random.nextInt(state.nEnemyTypes) + 1;
         }
         return column;
@@ -58,11 +64,27 @@ public class Engine {
         }
         return n;
     }
+    final int scoreStep = 10;
+    final int difficultyStep = 5;
+    final float speedUpStep = 1.05f;
+    void incrementScore(int scoreInc) {
+        int nSteps = -(state.score / scoreStep);
+        state.score += scoreInc;
+        nSteps += (state.score / scoreStep);
+        if (nSteps > 0) {
+            for (int i = 0; i < nSteps; ++i) {
+                difficulty += difficultyStep;
+                state.level++;
+                dT = (int) (1.0f / speedUpStep * dT);
+            }
+            restart();
+        }
+    }
     void incrementAction() {
         state.elements.add(newColumn());
         if (state.elements.size() > nW) {
             final int [] column = state.elements.get(0);
-            state.score += countMonsters(column);
+            incrementScore(countMonsters(column));
             state.elements.remove(0);
         }
         display.updateContents();
@@ -85,7 +107,7 @@ public class Engine {
     void stop() {
         timer.stop();
     }
-    
+
     public void keyTyped(KeyEvent ke) {
         keyImpl(ke);
     }

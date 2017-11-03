@@ -120,7 +120,7 @@ public class Display extends JPanel {
             g.drawString(text, x, y);
         }
         {
-            final String text = "LEVEL: " + state.difficulty;
+            final String text = "LEVEL: " + (state.level);
             final Font font = new Font("sansserif", Font.BOLD, (int) ((float) h / 25));
             final FontMetrics metrics = g.getFontMetrics(font);
             final int x = w - metrics.stringWidth(text) - 10;
