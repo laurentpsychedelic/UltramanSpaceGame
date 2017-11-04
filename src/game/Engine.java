@@ -4,7 +4,9 @@ import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 import javax.swing.Timer;
 
@@ -13,13 +15,16 @@ public class Engine {
     int nH;
     int dT;
     Timer timer;
+    Timer timerAction;
     Display display;
     public class GameState {
         ArrayList<int []> elements = new ArrayList<>();
+        ArrayList<Point2D.Float> missiles = new ArrayList<>();
         int nEnemyTypes = 3;
         Point position;
         int score = 0;
         int level = 1;
+        int nMissiles = 10;
     }
     int difficulty = 100;
     GameState state = new GameState();
@@ -29,24 +34,36 @@ public class Engine {
         state.position = new Point(nW / 3, nH / 2);
         this.dT = dT;
         this.display = new Display(nW, nH, state);
-        timer = new Timer(dT, tickListener);
+        timer = new Timer(dT, tickListenerIncrement);
+        timerAction = new Timer(100, tickListener);
     }
     public Display getDisplay() { return display; }
-    ActionListener tickListener = new ActionListener() {
+    ActionListener tickListenerIncrement = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent evt) {
             incrementAction();
         }
     };
+    ActionListener tickListener = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent evt) {
+            display.updateContents();
+            incrementMissiles();
+            if (!GAME_OVER)
+                detectCollision();
+        }
+    };
+
     public void init() {
         display.init();
     }
     public void start() {
         timer.start();
+        timerAction.start();
     }
     public void restart() {
         stop();
-        timer = new Timer(dT, tickListener);
+        timer = new Timer(dT, tickListenerIncrement);
         start();
     }
     void stop() {
@@ -70,20 +87,33 @@ public class Engine {
         }
         return n;
     }
-    final int scoreStep = 10;
     final int difficultyStep = 5;
     final float speedUpStep = 1.05f;
+    int difficultyFloor = 0;
+    final int scoreStepDifficulty = 10;
+    final int nMissilesStep = 5;
+    int bonusMissilesFloor = 0;
+    final int scoreStepBonusMissiles = 50;
     void incrementScore(int scoreInc) {
-        int nSteps = -(state.score / scoreStep);
         state.score += scoreInc;
-        nSteps += (state.score / scoreStep);
-        if (nSteps > 0) {
+        final int newDifficultyFloor = state.score / scoreStepDifficulty;
+        if (difficultyFloor != newDifficultyFloor) {
+            final int nSteps = newDifficultyFloor - difficultyFloor;
             for (int i = 0; i < nSteps; ++i) {
                 difficulty += difficultyStep;
                 state.level++;
                 dT = (int) (1.0f / speedUpStep * dT);
             }
+            difficultyFloor = newDifficultyFloor;
             restart();
+        }
+        final int newBonusMissilesFloor = state.score / scoreStepBonusMissiles;
+        if (bonusMissilesFloor != newBonusMissilesFloor) {
+            final int nSteps = newBonusMissilesFloor - bonusMissilesFloor;
+            for (int i = 0; i < nSteps; ++i) {
+                state.nMissiles += nMissilesStep;
+            }
+            bonusMissilesFloor = newBonusMissilesFloor;
         }
     }
     void incrementAction() {
@@ -93,10 +123,35 @@ public class Engine {
             incrementScore(countMonsters(column));
             state.elements.remove(0);
         }
-        display.updateContents();
         detectCollision();
     }
+    void incrementMissiles() {
+        if (!state.missiles.isEmpty()) {
+            for (Iterator<Point2D.Float> iterator = state.missiles.iterator(); iterator.hasNext();) {
+                Point2D.Float p = iterator.next();
+                p.x += 0.5f;
+                if (p.x > nW)
+                    iterator.remove();
+            }
+        }
+    }
     void detectCollision() {
+        // Collision missile monster
+        if (!state.missiles.isEmpty()) {
+            for (Point2D.Float p : state.missiles) {
+                final int _x = (int) p.x - (nW - state.elements.size());
+                final int _y = (int) p.y;
+                if (_x < 0 || _x >= state.elements.size())
+                    return;
+                final int [] column = state.elements.get(_x);
+                if (column[_y] > 0) {
+                    column[_y] = 0; // Kill monster
+                    incrementScore(1);
+                    display.explosion(new Point((int) p.x, (int) p.y));
+                }
+            }
+        }
+        // Collision hero - monster
         final int _x = state.position.x - (nW - state.elements.size());
         if (_x < 0 || _x >= state.elements.size())
             return;
@@ -109,6 +164,12 @@ public class Engine {
         GAME_OVER = true;
         stop();
         display.gameOver();
+    }
+    void launchMissile() {
+        if (state.nMissiles <= 0)
+            return;
+        state.nMissiles--;
+        state.missiles.add(new Point2D.Float(state.position.x, state.position.y));
     }
 
     public void keyTyped(KeyEvent ke) {
@@ -128,7 +189,7 @@ public class Engine {
         }
         int x = state.position.x;
         int y = state.position.y;
-        switch ( keyCode ) { 
+        switch ( keyCode ) {
         case KeyEvent.VK_UP:
             y--;
             break;
@@ -140,6 +201,9 @@ public class Engine {
             break;
         case KeyEvent.VK_RIGHT :
             x++;
+            break;
+        case KeyEvent.VK_SPACE:
+            launchMissile();
             break;
         }
         if (x < 0)
@@ -155,7 +219,7 @@ public class Engine {
         display.updateContents();
         detectCollision();
     }
-    
+
     public void keyReleased(KeyEvent ke) {
         /* NOTHING */
     }

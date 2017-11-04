@@ -9,12 +9,14 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.RenderingHints;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.lang.Thread;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioInputStream;
@@ -33,6 +35,7 @@ public class Display extends JPanel {
     BufferedImage heroSprite;
     BufferedImage deadHeroSprite;
     BufferedImage [] explosionSprites;
+    BufferedImage [] missileSprites;
     BufferedImage background;
     public Display(int nW, int nH, GameState state) {
         this.nW = nW;
@@ -79,6 +82,9 @@ public class Display extends JPanel {
         explosionSprites = new BufferedImage[lenExplosion];
         for (int i = 0; i < lenExplosion; ++i)
             explosionSprites[i] = loadSprite(this.getClass().getResource("/game/sprites/explosion" + (i + 1) +  ".png"), cellW, cellH);
+        missileSprites = new BufferedImage[lenMissile];
+        for (int i = 0; i < lenMissile; ++i)
+            missileSprites[i] = loadSprite(this.getClass().getResource("/game/sprites/missile" + (i + 1) +  ".png"), cellW, cellH);
     }
     public void init() {
         initializeSprites();
@@ -86,6 +92,8 @@ public class Display extends JPanel {
     public void updateContents() {
         repaint();
     }
+    final int lenMissile = 4;
+    int phaseMissile = 0;
     @Override
     public void paint(Graphics _g) {
         final Graphics2D g = (Graphics2D) _g.create();
@@ -113,14 +121,30 @@ public class Display extends JPanel {
             final int y = (int) (state.position.y * (float) h / nH);
             g.drawImage(GAME_OVER ? deadHeroSprite : heroSprite, x, y, this);
         }
-        if (!explosions.isEmpty()) {
-            for (Map.Entry<Point, Integer> e : explosions.entrySet()) {
-                final Point p = e.getKey();
-                final int i = lenExplosion - e.getValue();
-                final Image sprite = explosionSprites[i];
+        if (!state.missiles.isEmpty()) {
+            for (Point2D.Float p : state.missiles) {
+                phaseMissile++;
+                if (phaseMissile >= lenMissile)
+                    phaseMissile = 0;
+                final Image sprite = missileSprites[phaseMissile];
                 final int x = (int) (p.x * (float) w / nW);
                 final int y = (int) (p.y * (float) h / nH);
                 g.drawImage(sprite, x, y, this);
+            }
+        }
+        if (!explosions.isEmpty()) {
+            for (Iterator<Map.Entry<Point, Integer>> iterator = explosions.entrySet().iterator(); iterator.hasNext();) {
+                final Map.Entry<Point, Integer> e = iterator.next();
+                final Point p = e.getKey();
+                final int i = e.getValue();
+                final Image sprite = explosionSprites[lenExplosion - i - 1];
+                final int x = (int) (p.x * (float) w / nW);
+                final int y = (int) (p.y * (float) h / nH);
+                g.drawImage(sprite, x, y, this);
+                if (i == 0)
+                    iterator.remove();
+                else
+                    explosions.put(p, i - 1);
             }
         }
         if (GAME_OVER) {
@@ -138,6 +162,16 @@ public class Display extends JPanel {
             final Font font = new Font("sansserif", Font.BOLD, (int) ((float) h / 25));
             final FontMetrics metrics = g.getFontMetrics(font);
             final int x = 10;
+            final int y = 10 + metrics.getAscent();
+            g.setColor(Color.YELLOW);
+            g.setFont(font);
+            g.drawString(text, x, y);
+        }
+        {
+            final String text = "AMMO: " + state.nMissiles;
+            final Font font = new Font("sansserif", Font.BOLD, (int) ((float) h / 25));
+            final FontMetrics metrics = g.getFontMetrics(font);
+            final int x = (w - metrics.stringWidth(text)) / 2;
             final int y = 10 + metrics.getAscent();
             g.setColor(Color.YELLOW);
             g.setFont(font);
@@ -165,25 +199,7 @@ public class Display extends JPanel {
     public void explosion(final Point p) {
         if (explosions.containsKey(p))
             return;
-        explosions.put(p, lenExplosion);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = lenExplosion - 1; i >= 0; --i) {
-                    if (i <= 0)
-                        explosions.remove(p);
-                    else
-                        explosions.put(p, i);
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            repaint();
-                        }
-                    });
-                    try { Thread.sleep(dTExplosion); } catch (InterruptedException ie) { /* NOTHING */ }
-                }
-            }
-        }).start();
+        explosions.put(p, lenExplosion - 1);
         playSound(this.getClass().getResource("/game/sounds/explosion.wav"));
     }
     void playSound(final URL file) {
