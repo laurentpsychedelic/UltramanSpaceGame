@@ -17,6 +17,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
 import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -180,5 +184,18 @@ public class Display extends JPanel {
                 }
             }
         }).start();
+        playSound(this.getClass().getResource("/game/sounds/explosion.wav"));
+    }
+    void playSound(final URL file) {
+        try {
+            final DataLine.Info daInfo = new DataLine.Info(Clip.class, null);
+            final AudioInputStream inputStream = AudioSystem.getAudioInputStream(file);
+            final DataLine.Info info = new DataLine.Info(Clip.class, inputStream.getFormat());
+            final Clip clip = (Clip) AudioSystem.getLine(info);
+            clip.open(inputStream);
+            clip.start();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
