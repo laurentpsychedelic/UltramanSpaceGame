@@ -38,15 +38,21 @@ public class Engine {
             incrementAction();
         }
     };
-    public void start() {
+    public void init() {
         display.init();
+    }
+    public void start() {
         timer.start();
     }
     public void restart() {
-        timer.stop();
+        stop();
         timer = new Timer(dT, tickListener);
-        timer.start();
+        start();
     }
+    void stop() {
+        timer.stop();
+    }
+
     Random random = new Random();
     int [] newColumn() {
         final int [] column = new int[nH];
@@ -103,9 +109,6 @@ public class Engine {
         GAME_OVER = true;
         stop();
         display.gameOver();
-    }
-    void stop() {
-        timer.stop();
     }
 
     public void keyTyped(KeyEvent ke) {

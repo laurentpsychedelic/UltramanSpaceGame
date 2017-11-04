@@ -115,7 +115,7 @@ public class Display extends JPanel {
             final FontMetrics metrics = g.getFontMetrics(font);
             final int x = 10;
             final int y = 10 + metrics.getAscent();
-            g.setColor(Color.RED);
+            g.setColor(Color.YELLOW);
             g.setFont(font);
             g.drawString(text, x, y);
         }
@@ -125,7 +125,7 @@ public class Display extends JPanel {
             final FontMetrics metrics = g.getFontMetrics(font);
             final int x = w - metrics.stringWidth(text) - 10;
             final int y = 10 + metrics.getAscent();
-            g.setColor(Color.RED);
+            g.setColor(Color.YELLOW);
             g.setFont(font);
             g.drawString(text, x, y);
         }

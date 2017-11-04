@@ -4,6 +4,7 @@ public class Window extends javax.swing.JFrame {
     Engine engine;
     public Window(Engine engine) {
         initComponents();
+        setTitle("UltraSpeceGame");
         this.engine = engine;
     }
 
@@ -28,7 +29,6 @@ public class Window extends javax.swing.JFrame {
                 formKeyReleased(evt);
             }
         });
-        getContentPane().setLayout(null);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
