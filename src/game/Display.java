@@ -11,11 +11,15 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.lang.Thread;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 public class Display extends JPanel {
     int nW;
@@ -23,6 +27,8 @@ public class Display extends JPanel {
     GameState state;
     BufferedImage [] monsterSprites;
     BufferedImage heroSprite;
+    BufferedImage deadHeroSprite;
+    BufferedImage [] explosionSprites;
     BufferedImage background;
     public Display(int nW, int nH, GameState state) {
         this.nW = nW;
@@ -64,7 +70,11 @@ public class Display extends JPanel {
         for (int i = 0; i < state.nEnemyTypes; ++i)
             monsterSprites[i] = loadSprite(this.getClass().getResource("/game/sprites/monster" + (i + 1) +  ".png"), cellW, cellH);
         heroSprite = loadSprite(this.getClass().getResource("/game/sprites/hero.png"), cellW, cellH);
+        deadHeroSprite = loadSprite(this.getClass().getResource("/game/sprites/hero_dead.png"), cellW, cellH);
         background = loadSprite(this.getClass().getResource("/game/sprites/space.png"), w, h, false);
+        explosionSprites = new BufferedImage[lenExplosion];
+        for (int i = 0; i < lenExplosion; ++i)
+            explosionSprites[i] = loadSprite(this.getClass().getResource("/game/sprites/explosion" + (i + 1) +  ".png"), cellW, cellH);
     }
     public void init() {
         initializeSprites();
@@ -97,7 +107,17 @@ public class Display extends JPanel {
         {
             final int x = (int) (state.position.x * (float) w / nW);
             final int y = (int) (state.position.y * (float) h / nH);
-            g.drawImage(heroSprite, x, y, this);
+            g.drawImage(GAME_OVER ? deadHeroSprite : heroSprite, x, y, this);
+        }
+        if (!explosions.isEmpty()) {
+            for (Map.Entry<Point, Integer> e : explosions.entrySet()) {
+                final Point p = e.getKey();
+                final int i = lenExplosion - e.getValue();
+                final Image sprite = explosionSprites[i];
+                final int x = (int) (p.x * (float) w / nW);
+                final int y = (int) (p.y * (float) h / nH);
+                g.drawImage(sprite, x, y, this);
+            }
         }
         if (GAME_OVER) {
             final String text = "GAME OVER";
@@ -133,5 +153,32 @@ public class Display extends JPanel {
     boolean GAME_OVER = false;
     public void gameOver() {
         this.GAME_OVER = true;
+        explosion(state.position);
+    }
+    HashMap<Point, Integer> explosions = new HashMap<>();
+    final int lenExplosion = 12;
+    final int dTExplosion = 100;
+    public void explosion(final Point p) {
+        if (explosions.containsKey(p))
+            return;
+        explosions.put(p, lenExplosion);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = lenExplosion - 1; i >= 0; --i) {
+                    if (i <= 0)
+                        explosions.remove(p);
+                    else
+                        explosions.put(p, i);
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            repaint();
+                        }
+                    });
+                    try { Thread.sleep(dTExplosion); } catch (InterruptedException ie) { /* NOTHING */ }
+                }
+            }
+        }).start();
     }
 }
