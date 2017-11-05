@@ -11,7 +11,11 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.Thread;
 import java.net.URL;
 import java.util.ArrayList;
@@ -86,6 +90,7 @@ public class Display extends JPanel {
     }
     public void init() {
         initializeSprites();
+        initializeSounds();
     }
     public void updateContents() {
         repaint();
@@ -208,18 +213,42 @@ public class Display extends JPanel {
     final int dTExplosion = 100;
     public void explosion(final Point2D.Float p) {
         explosions.add(new Explosion(p, 0));
-        playSound(this.getClass().getResource("/game/sounds/explosion.wav"));
+        playSound(explosionSound);
     }
     void playSound(final URL file) {
         try {
-            final DataLine.Info daInfo = new DataLine.Info(Clip.class, null);
-            final AudioInputStream inputStream = AudioSystem.getAudioInputStream(file);
-            final DataLine.Info info = new DataLine.Info(Clip.class, inputStream.getFormat());
+            playSound(AudioSystem.getAudioInputStream(file));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public void playSound(byte[] bytes) {
+        playSound(new ByteArrayInputStream(bytes));
+    }
+    public void playSound(InputStream is) {
+        try {
+            AudioInputStream sound = AudioSystem.getAudioInputStream(is);
+            DataLine.Info info = new DataLine.Info(Clip.class, sound.getFormat());
             final Clip clip = (Clip) AudioSystem.getLine(info);
-            clip.open(inputStream);
+            clip.open(sound);
             clip.start();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+    byte [] loadSound(URL file) {
+        try {
+            final InputStream is = new BufferedInputStream(file.openStream());
+            final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            for (int b; (b = is.read()) != -1;)
+                out.write(b);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    byte [] explosionSound;
+    void initializeSounds() {
+        explosionSound = loadSound(this.getClass().getResource("/game/sounds/explosion.wav"));
     }
 }
