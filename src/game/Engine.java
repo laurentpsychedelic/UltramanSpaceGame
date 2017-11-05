@@ -18,14 +18,26 @@ public class Engine {
     Timer timerAction;
     Display display;
     public class GameState {
-        ArrayList<int []> elements = new ArrayList<>();
-        ArrayList<Point2D.Float> missiles = new ArrayList<>();
+        ArrayList<int []> monsters = new ArrayList<>();
+        ArrayList<Missile> missiles = new ArrayList<>();
         int nEnemyTypes = 3;
         Point position;
         int score = 0;
         int level = 1;
         int nMissiles = 10;
     }
+    public class Missile {
+        Point2D.Float p;
+        Point2D.Float v;
+        int phase;
+        public Missile(Point2D.Float p, Point2D.Float v, int phase) {
+            this.p = p;
+            this.v = v;
+            this.phase = phase;
+        }
+
+    }
+
     int difficulty = 100;
     GameState state = new GameState();
     public Engine(int nW, int nH, int dT) {
@@ -117,20 +129,23 @@ public class Engine {
         }
     }
     void incrementAction() {
-        state.elements.add(newColumn());
-        if (state.elements.size() > nW) {
-            final int [] column = state.elements.get(0);
+        state.monsters.add(newColumn());
+        if (state.monsters.size() > nW) {
+            final int [] column = state.monsters.get(0);
             incrementScore(countMonsters(column));
-            state.elements.remove(0);
+            state.monsters.remove(0);
         }
         detectCollision();
     }
     void incrementMissiles() {
         if (!state.missiles.isEmpty()) {
-            for (Iterator<Point2D.Float> iterator = state.missiles.iterator(); iterator.hasNext();) {
-                Point2D.Float p = iterator.next();
-                p.x += 0.5f;
-                if (p.x > nW)
+            for (Iterator<Missile> iterator = state.missiles.iterator(); iterator.hasNext();) {
+                final Missile m = iterator.next();
+                final Point2D.Float p = m.p;
+                final Point2D.Float v = m.v;
+                p.x += v.x;
+                p.y += v.y;
+                if (p.x < 0 || p.x > nW || p.y < 0 || p.y > nH)
                     iterator.remove();
             }
         }
@@ -138,24 +153,25 @@ public class Engine {
     void detectCollision() {
         // Collision missile monster
         if (!state.missiles.isEmpty()) {
-            for (Point2D.Float p : state.missiles) {
-                final int _x = (int) p.x - (nW - state.elements.size());
-                final int _y = (int) p.y;
-                if (_x < 0 || _x >= state.elements.size())
+            for (Missile m : state.missiles) {
+                final Point2D.Float p = m.p;
+                final int _x = (int) Math.round(p.x - (nW - state.monsters.size()));
+                final int _y = (int) Math.round(p.y);
+                if (_x < 0 || _x >= state.monsters.size() || _y < 0 || _y >= nH)
                     return;
-                final int [] column = state.elements.get(_x);
+                final int [] column = state.monsters.get(_x);
                 if (column[_y] > 0) {
                     column[_y] = 0; // Kill monster
                     incrementScore(1);
-                    display.explosion(new Point((int) p.x, (int) p.y));
+                    display.explosion(new Point2D.Float(p.x, p.y));
                 }
             }
         }
         // Collision hero - monster
-        final int _x = state.position.x - (nW - state.elements.size());
-        if (_x < 0 || _x >= state.elements.size())
+        final int _x = state.position.x - (nW - state.monsters.size());
+        if (_x < 0 || _x >= state.monsters.size())
             return;
-        final int [] column = state.elements.get(_x);
+        final int [] column = state.monsters.get(_x);
         if (column[state.position.y] > 0)
             gameOver();
     }
@@ -165,11 +181,11 @@ public class Engine {
         stop();
         display.gameOver();
     }
-    void launchMissile() {
+    void launchMissile(Point2D.Float v) {
         if (state.nMissiles <= 0)
             return;
         state.nMissiles--;
-        state.missiles.add(new Point2D.Float(state.position.x, state.position.y));
+        state.missiles.add(new Missile(new Point2D.Float(state.position.x, state.position.y), new Point2D.Float(v.x, v.y), 0));
     }
 
     public void keyTyped(KeyEvent ke) {
@@ -203,7 +219,11 @@ public class Engine {
             x++;
             break;
         case KeyEvent.VK_SPACE:
-            launchMissile();
+            launchMissile(new Point2D.Float(0.50f, 0.00f));
+            if (ke.isShiftDown()) {
+                launchMissile(new Point2D.Float(0.35f, -0.35f));
+                launchMissile(new Point2D.Float(0.35f,  0.35f));
+            }
             break;
         }
         if (x < 0)
